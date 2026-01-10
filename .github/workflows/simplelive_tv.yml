@@ -96,7 +96,7 @@ jobs:
           # 3️⃣ 将占位符1/2/3 替换为直播类目原始内容
           sed -i 's/text: "PLACEHOLDER_1"/text: "直播类目"/' "$FILE"
           sed -i 's/iconData: PLACEHOLDER_2/iconData: Remix.apps_line/' "$FILE"
-          sed -i 's/onTap: PLACEHOLDER_3/onTap: controller.toCategory/' "$FILE'
+          sed -i 's/onTap: PLACEHOLDER_3/onTap: controller.toCategory/' "$FILE"
 
           # 4️⃣ 删除所有占位符（清理残留）
           sed -i '/PLACEHOLDER_/d' "$FILE"
