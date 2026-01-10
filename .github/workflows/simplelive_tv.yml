@@ -56,33 +56,13 @@ jobs:
           cd simple_live_tv_app
           rm -f pubspec.lock
 
-      # 🔥 6.6️⃣ 首页按钮顺序（严格 1:1 children 块替换）
-      - name: Patch Home buttons order
+      # 🔥 6.6️⃣ 分类页默认站点改为虎牙
+      - name: Patch default category site (Huya)
         run: |
-          FILE="simple_live_tv_app/lib/modules/home/home_controller.dart"
+          FILE="simple_live_tv_app/lib/modules/category/category_controller.dart"
 
-          sed -i '/children:[[:space:]]*\[/,/^[[:space:]]*],/c\
-          children: [\
-            Expanded(\
-              child: HomeBigButton(\
-                autofocus: true,\
-                focusNode: AppFocusNode(),\
-                text: "直播类目",\
-                iconData: Remix.apps_line,\
-                onTap: controller.toCategory,\
-              ),\
-            ),\
-            AppStyle.hGap48,\
-            Expanded(\
-              child: HomeBigButton(\
-                autofocus: true,\
-                focusNode: AppFocusNode(),\
-                text: "热门直播",\
-                iconData: Remix.fire_line,\
-                onTap: controller.toHotLive,\
-              ),\
-            ),\
-          ],' "$FILE"
+          sed -i 's/Constant.kBiliBili.obs/Constant.kHuya.obs/' "$FILE"
+          sed -i 's/Sites.allSites\[Constant.kBiliBili\]!/Sites.allSites[Constant.kHuya]!/' "$FILE"
 
       # 🔥 6.7️⃣ 默认清晰度 + 首次运行标记
       - name: Patch default settings
@@ -100,6 +80,32 @@ jobs:
           sed -i 's/^  media_kit:.*/  media_kit: 1.1.11/' "$PUBSPEC"
           sed -i 's/^  media_kit_video:.*/  media_kit_video: 1.2.5/' "$PUBSPEC"
           sed -i 's/^  media_kit_libs_android_video:.*/  media_kit_libs_video: 1.0.5/' "$PUBSPEC"
+
+      # 🔥 6.9️⃣ 首页按钮顺序调整（单 sed + 占位符，绝不回滚）
+      - name: Patch home buttons order (single sed safe)
+        run: |
+          FILE="simple_live_tv_app/lib/modules/home/home_controller.dart"
+
+          sed -i '
+          /Row(/,/],/{
+
+            /text: "热门直播"/{
+              s/text: "热门直播"/text: "__TMP_HOT__"/
+              s/iconData: Remix.fire_line/iconData: __TMP_ICON_HOT__/
+              s/onTap: controller.toHotLive/onTap: __TMP_TAP_HOT__/
+            }
+
+            /text: "直播类目"/{
+              s/text: "直播类目"/text: "热门直播"/
+              s/iconData: Remix.apps_line/iconData: Remix.fire_line/
+              s/onTap: controller.toCategory/onTap: controller.toHotLive/
+            }
+
+            s/text: "__TMP_HOT__"/text: "直播类目"/
+            s/iconData: __TMP_ICON_HOT__/iconData: Remix.apps_line/
+            s/onTap: __TMP_TAP_HOT__/onTap: controller.toCategory/
+          }
+          ' "$FILE"
 
       # 7️⃣ 构建 APK
       - name: Build TV APK
