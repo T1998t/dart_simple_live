@@ -84,7 +84,7 @@ jobs:
       # 🔥 6.9️⃣ 首页按钮顺序调整（单 sed + 占位符，绝不回滚）
       - name: Patch home buttons order (single sed safe)
         run: |
-          FILE="simple_live_tv_app/lib/modules/home/home_controller.dart"
+          FILE="simple_live_tv_app/lib/modules/home/home_page.dart"
 
           sed -i '
           /Row(/,/],/{
