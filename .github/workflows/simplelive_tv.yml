@@ -60,7 +60,6 @@ jobs:
       - name: Patch default category site (Huya)
         run: |
           FILE="simple_live_tv_app/lib/modules/category/category_controller.dart"
-
           sed -i 's/Constant.kBiliBili.obs/Constant.kHuya.obs/' "$FILE"
           sed -i 's/Sites.allSites\[Constant.kBiliBili\]!/Sites.allSites[Constant.kHuya]!/' "$FILE"
 
@@ -68,7 +67,6 @@ jobs:
       - name: Patch default settings
         run: |
           FILE="simple_live_tv_app/lib/app/controller/app_settings_controller.dart"
-
           sed -i 's/getValue(LocalStorageService.kQualityLevel, 1)/getValue(LocalStorageService.kQualityLevel, 2)/' "$FILE"
           sed -i 's/getValue(LocalStorageService.kFirstRun, true)/getValue(LocalStorageService.kFirstRun, false)/' "$FILE"
 
@@ -76,35 +74,17 @@ jobs:
       - name: Force media_kit versions
         run: |
           PUBSPEC="simple_live_tv_app/pubspec.yaml"
-
           sed -i 's/^  media_kit:.*/  media_kit: 1.1.11/' "$PUBSPEC"
           sed -i 's/^  media_kit_video:.*/  media_kit_video: 1.2.5/' "$PUBSPEC"
           sed -i 's/^  media_kit_libs_android_video:.*/  media_kit_libs_video: 1.0.5/' "$PUBSPEC"
 
-      # 🔥 6.9️⃣ 首页按钮顺序调整（热门直播 ↔ 直播类目互换）
-      - name: Patch home buttons order (swap 2 buttons)
+      # 🔥 6.9️⃣ 首页按钮顺序调整（整块安全替换）
+      - name: Patch home buttons order (full safe replacement)
         run: |
           FILE="simple_live_tv_app/lib/modules/home/home_page.dart"
 
-          # 将热门直播块整个替换为临时占位符
-          sed -i '/text: "热门直播"/,/},/{
-            s/^/TMP_HOT: /
-          }' "$FILE"
-
-          # 将直播类目块替换为热门直播原位置
-          sed -i '/text: "直播类目"/,/},/c\
-                      Expanded(\
-                        child: HomeBigButton(\
-                          autofocus: true,\
-                          focusNode: AppFocusNode(),\
-                          text: "热门直播",\
-                          iconData: Remix.fire_line,\
-                          onTap: controller.toHotLive,\
-                        ),\
-                      ),' "$FILE"
-
-          # 将临时占位符替换为直播类目原块
-          sed -i '/TMP_HOT: *child: HomeBigButton(.*text: "热门直播".*/,/TMP_HOT:.*},/c\
+          sed -i '/children: \[/,/],/c\
+                    children: [\
                       Expanded(\
                         child: HomeBigButton(\
                           autofocus: true,\
@@ -113,10 +93,46 @@ jobs:
                           iconData: Remix.apps_line,\
                           onTap: controller.toCategory,\
                         ),\
-                      ),' "$FILE"
-
-          # 删除临时占位符
-          sed -i '/TMP_HOT:/d' "$FILE"
+                      ),\
+                      AppStyle.hGap48,\
+                      Expanded(\
+                        child: HomeBigButton(\
+                          autofocus: true,\
+                          focusNode: AppFocusNode(),\
+                          text: "热门直播",\
+                          iconData: Remix.fire_line,\
+                          onTap: controller.toHotLive,\
+                        ),\
+                      ),\
+                      AppStyle.hGap48,\
+                      Expanded(\
+                        child: HomeBigButton(\
+                          autofocus: true,\
+                          focusNode: AppFocusNode(),\
+                          text: "搜索直播",\
+                          iconData: Remix.search_2_line,\
+                          onTap: showSearchDialog,\
+                        ),\
+                      ),\
+                      AppStyle.hGap48,\
+                      Expanded(\
+                        child: HomeBigButton(\
+                          focusNode: AppFocusNode(),\
+                          text: "观看记录",\
+                          iconData: Icons.history,\
+                          onTap: controller.toHistory,\
+                        ),\
+                      ),\
+                      AppStyle.hGap48,\
+                      Expanded(\
+                        child: HomeBigButton(\
+                          focusNode: AppFocusNode(),\
+                          text: "数据同步",\
+                          iconData: Icons.devices,\
+                          onTap: controller.toSync,\
+                        ),\
+                      ),\
+                    ]' "$FILE"
 
       # 7️⃣ 构建 APK
       - name: Build TV APK
