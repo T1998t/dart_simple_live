@@ -1,0 +1,124 @@
+name: Build Simple Live TV APK (Dummy Signed)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout 仓库
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2️⃣ 安装 Flutter（beta 渠道）
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: beta
+          cache: false
+
+      # 3️⃣ 创建 local.properties 指向 Flutter SDK
+      - name: Create local.properties
+        run: |
+          mkdir -p dart_simple_live-master/simple_live_tv_app
+          echo "flutter.sdk=${HOME}/flutter" > dart_simple_live-master/simple_live_tv_app/local.properties
+
+      # 4️⃣ 创建 dummy keystore
+      - name: Create dummy keystore
+        run: |
+          mkdir -p dart_simple_live-master/simple_live_tv_app/android/app/app
+          keytool -genkey -v -keystore dart_simple_live-master/simple_live_tv_app/android/app/app/keystore.jks \
+            -storepass 123456 -alias test -keypass 123456 -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=CI, OU=CI, O=CI, L=City, ST=State, C=CN"
+
+      # 5️⃣ 创建 key.properties
+      - name: Create key.properties
+        run: |
+          echo "storePassword=123456" > dart_simple_live-master/simple_live_tv_app/android/key.properties
+          echo "keyPassword=123456" >> dart_simple_live-master/simple_live_tv_app/android/key.properties
+          echo "keyAlias=test" >> dart_simple_live-master/simple_live_tv_app/android/key.properties
+          echo "storeFile=app/keystore.jks" >> dart_simple_live-master/simple_live_tv_app/android/key.properties
+
+      # 6️⃣ Flutter 版本检查
+      - name: Flutter version check
+        run: flutter --version
+
+      # 🔥 6.5️⃣ 删除 pubspec.lock（防止缓存）
+      - name: Remove pubspec.lock
+        run: |
+          cd dart_simple_live-master/simple_live_tv_app
+          rm -f pubspec.lock
+
+      # 🔥 6.6️⃣ 首页按钮顺序调整
+      - name: Patch Home buttons order
+        run: |
+          FILE="dart_simple_live-master/simple_live_tv_app/lib/modules/home/home_controller.dart"
+
+          sed -i '/children: \[/,/],/c\
+          children: [\
+                Expanded(\
+                  child: HomeBigButton(\
+                    autofocus: true,\
+                    focusNode: AppFocusNode(),\
+                    text: "直播类目",\
+                    iconData: Remix.apps_line,\
+                    onTap: controller.toCategory,\
+                  ),\
+                ),\
+                AppStyle.hGap48,\
+                Expanded(\
+                  child: HomeBigButton(\
+                    autofocus: true,\
+                    focusNode: AppFocusNode(),\
+                    text: "热门直播",\
+                    iconData: Remix.fire_line,\
+                    onTap: controller.toHotLive,\
+                  ),\
+                ),\
+          ],' "$FILE"
+
+      # 🔥 6.7️⃣ 默认清晰度改为最高
+      - name: Patch default quality level
+        run: |
+          FILE="dart_simple_live-master/simple_live_tv_app/lib/app/controller/app_settings_controller.dart"
+
+          sed -i 's/getValue(LocalStorageService.kQualityLevel, 1)/getValue(LocalStorageService.kQualityLevel, 2)/' "$FILE"
+
+      # 🔥 6.7.5️⃣ 分类页默认站点改为虎牙
+      - name: Patch default category site (Huya)
+        run: |
+          FILE="dart_simple_live-master/simple_live_tv_app/lib/modules/category/category_controller.dart"
+
+          sed -i 's/Constant.kBiliBili.obs/Constant.kHuya.obs/' "$FILE"
+          sed -i 's/Sites.allSites\[Constant.kBiliBili\]!/Sites.allSites[Constant.kHuya]!/' "$FILE"
+
+          echo "==== Patched category_controller.dart ===="
+          grep -E "siteId|site =" "$FILE"
+
+      # 🔥 6.8️⃣ 强制 media_kit 版本
+      - name: Force media_kit versions
+        run: |
+          PUBSPEC="dart_simple_live-master/simple_live_tv_app/pubspec.yaml"
+
+          sed -i 's/^  media_kit:.*/  media_kit: 1.1.11/' "$PUBSPEC"
+          sed -i 's/^  media_kit_video:.*/  media_kit_video: 1.2.5/' "$PUBSPEC"
+          sed -i 's/^  media_kit_libs_android_video:.*/  media_kit_libs_video: 1.0.5/' "$PUBSPEC"
+
+          echo "==== Modified pubspec.yaml ===="
+          grep -E "media_kit" "$PUBSPEC"
+
+      # 7️⃣ 构建 TV APK
+      - name: Build TV APK
+        run: |
+          cd dart_simple_live-master/simple_live_tv_app
+          flutter pub get
+          flutter build apk --release --split-per-abi
+
+      # 8️⃣ 上传 APK artifact
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: simple-live-tv-apk-dummy
+          path: dart_simple_live-master/simple_live_tv_app/build/app/outputs/flutter-apk/*.apk
