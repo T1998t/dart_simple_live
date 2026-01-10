@@ -1,4 +1,4 @@
-name: Build Simple Live TV APK (Dummy Signed)
+name: TV APK (Dummy Signed)
 
 on:
   workflow_dispatch:
@@ -12,25 +12,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2️⃣ 安装 Flutter（beta 渠道）
+      # 2️⃣ 安装 Flutter（beta）
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: beta
           cache: false
 
-      # 3️⃣ 创建 local.properties 指向 Flutter SDK
+      # 3️⃣ 创建 local.properties
       - name: Create local.properties
         run: |
-          mkdir -p simple_live_tv_app
           echo "flutter.sdk=${HOME}/flutter" > simple_live_tv_app/local.properties
 
       # 4️⃣ 创建 dummy keystore
       - name: Create dummy keystore
         run: |
           mkdir -p simple_live_tv_app/android/app/app
-          keytool -genkey -v -keystore simple_live_tv_app/android/app/app/keystore.jks \
-            -storepass 123456 -alias test -keypass 123456 -keyalg RSA -keysize 2048 -validity 10000 \
+          keytool -genkey -v \
+            -keystore simple_live_tv_app/android/app/app/keystore.jks \
+            -storepass 123456 \
+            -alias test \
+            -keypass 123456 \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
             -dname "CN=CI, OU=CI, O=CI, L=City, ST=State, C=CN"
 
       # 5️⃣ 创建 key.properties
@@ -45,53 +50,47 @@ jobs:
       - name: Flutter version check
         run: flutter --version
 
-      # 🔥 6.5️⃣ 删除 pubspec.lock
+      # 6.5️⃣ 删除 pubspec.lock
       - name: Remove pubspec.lock
         run: |
           cd simple_live_tv_app
           rm -f pubspec.lock
 
-      # 🔥 6.6️⃣ 首页按钮顺序（安全版）
+      # 🔥 6.6️⃣ 首页按钮顺序（严格 1:1 children 块替换）
       - name: Patch Home buttons order
         run: |
           FILE="simple_live_tv_app/lib/modules/home/home_controller.dart"
 
-          sed -i '
-          /text: "热门直播"/,/onTap: controller.toCategory,/c\
-          Expanded(\
-            child: HomeBigButton(\
-              autofocus: true,\
-              focusNode: AppFocusNode(),\
-              text: "直播类目",\
-              iconData: Remix.apps_line,\
-              onTap: controller.toCategory,\
+          sed -i '/children:[[:space:]]*\[/,/^[[:space:]]*],/c\
+          children: [\
+            Expanded(\
+              child: HomeBigButton(\
+                autofocus: true,\
+                focusNode: AppFocusNode(),\
+                text: "直播类目",\
+                iconData: Remix.apps_line,\
+                onTap: controller.toCategory,\
+              ),\
             ),\
-          ),\
-          AppStyle.hGap48,\
-          Expanded(\
-            child: HomeBigButton(\
-              autofocus: true,\
-              focusNode: AppFocusNode(),\
-              text: "热门直播",\
-              iconData: Remix.fire_line,\
-              onTap: controller.toHotLive,\
+            AppStyle.hGap48,\
+            Expanded(\
+              child: HomeBigButton(\
+                autofocus: true,\
+                focusNode: AppFocusNode(),\
+                text: "热门直播",\
+                iconData: Remix.fire_line,\
+                onTap: controller.toHotLive,\
+              ),\
             ),\
-          ),
-          ' "$FILE"
+          ],' "$FILE"
 
-      # 🔥 6.7️⃣ 默认清晰度改为最高
-      - name: Patch default quality level
+      # 🔥 6.7️⃣ 默认清晰度 + 首次运行标记
+      - name: Patch default settings
         run: |
           FILE="simple_live_tv_app/lib/app/controller/app_settings_controller.dart"
+
           sed -i 's/getValue(LocalStorageService.kQualityLevel, 1)/getValue(LocalStorageService.kQualityLevel, 2)/' "$FILE"
-
-      # 🔥 6.7.5️⃣ 分类页默认站点改为虎牙
-      - name: Patch default category site (Huya)
-        run: |
-          FILE="simple_live_tv_app/lib/modules/category/category_controller.dart"
-
-          sed -i 's/Constant.kBiliBili.obs/Constant.kHuya.obs/' "$FILE"
-          sed -i 's/Sites.allSites\[Constant.kBiliBili\]!/Sites.allSites[Constant.kHuya]!/' "$FILE"
+          sed -i 's/getValue(LocalStorageService.kFirstRun, true)/getValue(LocalStorageService.kFirstRun, false)/' "$FILE"
 
       # 🔥 6.8️⃣ 强制 media_kit 版本
       - name: Force media_kit versions
