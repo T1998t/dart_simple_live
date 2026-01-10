@@ -81,17 +81,17 @@ jobs:
           sed -i 's/^  media_kit_video:.*/  media_kit_video: 1.2.5/' "$PUBSPEC"
           sed -i 's/^  media_kit_libs_android_video:.*/  media_kit_libs_video: 1.0.5/' "$PUBSPEC"
 
-      # 🔥 6.9️⃣ 首页按钮顺序调整（安全完整替换）
-      - name: Patch home buttons order (full swap)
+      # 🔥 6.9️⃣ 首页按钮顺序调整（热门直播 ↔ 直播类目互换）
+      - name: Patch home buttons order (swap 2 buttons)
         run: |
           FILE="simple_live_tv_app/lib/modules/home/home_page.dart"
 
-          # 用临时占位符保存热门直播整块
-          sed -i '/text: "热门直播"/,/},/ {
-            s/^/TMP_LINE: /
+          # 将热门直播块整个替换为临时占位符
+          sed -i '/text: "热门直播"/,/},/{
+            s/^/TMP_HOT: /
           }' "$FILE"
 
-          # 先把直播类目替换到热门直播位置
+          # 将直播类目块替换为热门直播原位置
           sed -i '/text: "直播类目"/,/},/c\
                       Expanded(\
                         child: HomeBigButton(\
@@ -103,8 +103,8 @@ jobs:
                         ),\
                       ),' "$FILE"
 
-          # 再把原热门直播占位符替换到直播类目位置
-          sed -i '/TMP_LINE: *child: HomeBigButton(.*text: "热门直播".*/,/TMP_LINE:.*},/c\
+          # 将临时占位符替换为直播类目原块
+          sed -i '/TMP_HOT: *child: HomeBigButton(.*text: "热门直播".*/,/TMP_HOT:.*},/c\
                       Expanded(\
                         child: HomeBigButton(\
                           autofocus: true,\
@@ -115,8 +115,8 @@ jobs:
                         ),\
                       ),' "$FILE"
 
-          # 删除临时占位符行
-          sed -i '/TMP_LINE:/d' "$FILE"
+          # 删除临时占位符
+          sed -i '/TMP_HOT:/d' "$FILE"
 
       # 7️⃣ 构建 APK
       - name: Build TV APK
