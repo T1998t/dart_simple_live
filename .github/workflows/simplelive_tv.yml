@@ -78,61 +78,28 @@ jobs:
           sed -i 's/^  media_kit_video:.*/  media_kit_video: 1.2.5/' "$PUBSPEC"
           sed -i 's/^  media_kit_libs_android_video:.*/  media_kit_libs_video: 1.0.5/' "$PUBSPEC"
 
-      # 🔥 6.9️⃣ 首页按钮顺序调整（整块安全替换）
-      - name: Patch home buttons order (full safe replacement)
+      # 🔥 6.9️⃣ 首页按钮顺序调整（热门直播 ↔ 直播类目互换）
+      - name: Patch home buttons order (swap 2 buttons)
         run: |
           FILE="simple_live_tv_app/lib/modules/home/home_page.dart"
 
-          sed -i '/children: \[/,/],/c\
-                    children: [\
-                      Expanded(\
-                        child: HomeBigButton(\
-                          autofocus: true,\
-                          focusNode: AppFocusNode(),\
-                          text: "直播类目",\
-                          iconData: Remix.apps_line,\
-                          onTap: controller.toCategory,\
-                        ),\
-                      ),\
-                      AppStyle.hGap48,\
-                      Expanded(\
-                        child: HomeBigButton(\
-                          autofocus: true,\
-                          focusNode: AppFocusNode(),\
-                          text: "热门直播",\
-                          iconData: Remix.fire_line,\
-                          onTap: controller.toHotLive,\
-                        ),\
-                      ),\
-                      AppStyle.hGap48,\
-                      Expanded(\
-                        child: HomeBigButton(\
-                          autofocus: true,\
-                          focusNode: AppFocusNode(),\
-                          text: "搜索直播",\
-                          iconData: Remix.search_2_line,\
-                          onTap: showSearchDialog,\
-                        ),\
-                      ),\
-                      AppStyle.hGap48,\
-                      Expanded(\
-                        child: HomeBigButton(\
-                          focusNode: AppFocusNode(),\
-                          text: "观看记录",\
-                          iconData: Icons.history,\
-                          onTap: controller.toHistory,\
-                        ),\
-                      ),\
-                      AppStyle.hGap48,\
-                      Expanded(\
-                        child: HomeBigButton(\
-                          focusNode: AppFocusNode(),\
-                          text: "数据同步",\
-                          iconData: Icons.devices,\
-                          onTap: controller.toSync,\
-                        ),\
-                      ),\
-                    ]' "$FILE"
+          # 1️⃣ 将热门直播三行替换成占位符1/2/3
+          sed -i 's/text: "热门直播"/text: "PLACEHOLDER_1"/' "$FILE"
+          sed -i 's/iconData: Remix.fire_line/iconData: PLACEHOLDER_2/' "$FILE"
+          sed -i 's/onTap: controller.toHotLive/onTap: PLACEHOLDER_3/' "$FILE"
+
+          # 2️⃣ 将直播类目三行改成热门直播对应内容
+          sed -i 's/text: "直播类目"/text: "热门直播"/' "$FILE"
+          sed -i 's/iconData: Remix.apps_line/iconData: Remix.fire_line/' "$FILE"
+          sed -i 's/onTap: controller.toCategory/onTap: controller.toHotLive/' "$FILE"
+
+          # 3️⃣ 将占位符1/2/3 替换为直播类目原始内容
+          sed -i 's/text: "PLACEHOLDER_1"/text: "直播类目"/' "$FILE"
+          sed -i 's/iconData: PLACEHOLDER_2/iconData: Remix.apps_line/' "$FILE"
+          sed -i 's/onTap: PLACEHOLDER_3/onTap: controller.toCategory/' "$FILE'
+
+          # 4️⃣ 删除所有占位符（清理残留）
+          sed -i '/PLACEHOLDER_/d' "$FILE"
 
       # 7️⃣ 构建 APK
       - name: Build TV APK
